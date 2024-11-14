@@ -15,6 +15,7 @@ export class TypeOrmConfigService implements TypeOrmOptionsFactory {
     console.log('MIGRATIONS_RUN:', migrationsRun);
     console.log('SSL:', ssl);
     console.log('NODE_ENV:', process.env.NODE_ENV);
+    console.log(this.configService.get<string>('DATABASE_URL'));
 
     if (process.env.NODE_ENV === 'development') {
       return {
