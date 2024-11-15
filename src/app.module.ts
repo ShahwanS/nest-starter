@@ -10,6 +10,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { TypeOrmConfigService } from './config/typeorm.config';
 import { APP_GUARD, APP_PIPE } from '@nestjs/core';
 import { RolesGuard } from './common/guards/roles.guard';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 
 @Module({
   imports: [
@@ -19,7 +20,6 @@ import { RolesGuard } from './common/guards/roles.guard';
       isGlobal: true,
       envFilePath: [`.env.${process.env.NODE_ENV || 'development'}`, '.env'],
     }),
-    // TypeORM configuration
     TypeOrmModule.forRootAsync({
       useClass: TypeOrmConfigService,
     }),
@@ -28,6 +28,10 @@ import { RolesGuard } from './common/guards/roles.guard';
   providers: [
     AppService,
     UsersService,
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
     {
       provide: APP_GUARD,
       useClass: RolesGuard,

@@ -2,9 +2,10 @@
 import { IsOptional, IsString } from 'class-validator';
 
 export class UpdateUserDto {
-  @IsOptional()
-  @IsString()
   name?: string;
-
-  // Additional optional fields
+  age?: number;
+  location?: string;
+  interests?: string;
+  bio?: string;
+  profilePhoto?: string;
 }

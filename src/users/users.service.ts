@@ -1,11 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import * as bcrypt from 'bcrypt';
-import { CreateUserDto } from './dto/create-user.dto';
 import { User } from './user.entity';
-import { Role } from 'src/common/enums/roles.enum';
+import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { Role } from '../common/enums/roles.enum';
 
 @Injectable()
 export class UsersService {
@@ -15,29 +14,51 @@ export class UsersService {
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<User> {
-    const { username, password } = createUserDto;
-    // Hash the password before saving it in the database
-    const hashedPassword = await bcrypt.hash(password, 10);
     const user = this.usersRepository.create({
-      username,
-      password: hashedPassword,
-      //default role is user
-      role: Role.User,
+      ...createUserDto,
+      role: Role.User, // Default role
     });
     return this.usersRepository.save(user);
   }
 
-  async findByUsername(username: string): Promise<User> {
+  async findByUsername(username: string): Promise<User | undefined> {
     return this.usersRepository.findOne({ where: { username } });
   }
-  // Find a user by ID
-  async findById(id: string): Promise<User | undefined> {
-    return this.usersRepository.findOne({ where: { id } });
+
+  async findById(id: string): Promise<User> {
+    const user = await this.usersRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+    return user;
   }
 
-  // Update user profile
   async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
-    await this.usersRepository.update(id, updateUserDto);
-    return this.findById(id);
+    const user = await this.findById(id);
+    Object.assign(user, updateUserDto);
+    return this.usersRepository.save(user);
+  }
+
+  async updateRole(id: string, role: Role): Promise<User> {
+    const user = await this.findById(id);
+    user.role = role;
+    return this.usersRepository.save(user);
+  }
+
+  async findAll(): Promise<User[]> {
+    return this.usersRepository.find({
+      select: ['id', 'username', 'role'],
+    });
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.usersRepository.delete(id);
+  }
+
+  findOne(id: number) {
+    if (!id) {
+      return null;
+    }
+    return this.usersRepository.findOneBy({ id: id.toString() });
   }
 }

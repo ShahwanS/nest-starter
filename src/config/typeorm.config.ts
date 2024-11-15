@@ -7,42 +7,61 @@ export class TypeOrmConfigService implements TypeOrmOptionsFactory {
   constructor(private configService: ConfigService) {}
 
   createTypeOrmOptions(): TypeOrmModuleOptions {
-    const synchronize = this.configService.get<string>('SYNCHRONIZE');
-    const migrationsRun = this.configService.get<string>('MIGRATIONS_RUN');
-    const ssl = this.configService.get<string>('SSL');
+    const nodeEnv = process.env.NODE_ENV;
+    console.log('Current environment:', nodeEnv);
 
-    console.log('SYNCHRONIZE:', synchronize);
-    console.log('MIGRATIONS_RUN:', migrationsRun);
-    console.log('SSL:', ssl);
-    console.log('NODE_ENV:', process.env.NODE_ENV);
-    console.log(this.configService.get<string>('DATABASE_URL'));
+    // Base configuration shared between environments
+    const baseConfig = {
+      autoLoadEntities: true,
+      entities: [__dirname + '/../**/*.entity.{ts,js}'],
+      migrations: [__dirname + '/../migrations/*{.ts,.js}'],
+      logging: nodeEnv === 'development',
+    };
 
-    if (process.env.NODE_ENV === 'development') {
+    if (nodeEnv === 'development') {
+      const dbUrl = this.configService.get<string>('DATABASE_URL');
+      if (!dbUrl) {
+        throw new Error(
+          'DATABASE_URL is not defined in development environment',
+        );
+      }
+
       return {
-        type: this.configService.get<any>('DB_TYPE') || 'postgres',
-        url: this.configService.get<string>('DATABASE_URL'),
-        synchronize: synchronize ? JSON.parse(synchronize) : false,
-        autoLoadEntities: true,
-        migrationsRun: migrationsRun ? JSON.parse(migrationsRun) : true,
-        migrations: [__dirname + '/../migrations/*{.ts,.js}'],
-      };
-    } else if (process.env.NODE_ENV === 'test') {
-      return {
-        type: this.configService.get<any>('DB_TYPE'),
-        synchronize: synchronize ? JSON.parse(synchronize) : false,
-        database: this.configService.get<string>('DB_NAME'),
-        autoLoadEntities: true,
-        migrationsRun: migrationsRun ? JSON.parse(migrationsRun) : false,
-      };
-    } else if (process.env.NODE_ENV === 'production') {
-      return {
-        type: this.configService.get<any>('DB_TYPE') || 'postgres',
-        url: this.configService.get<string>('DATABASE_URL'),
-        autoLoadEntities: true,
-        synchronize: synchronize ? JSON.parse(synchronize) : false,
-        migrationsRun: migrationsRun ? JSON.parse(migrationsRun) : false,
-        ssl: ssl && JSON.parse(ssl) ? { rejectUnauthorized: false } : false,
+        ...baseConfig,
+        type: 'postgres',
+        url: dbUrl,
+        synchronize: true,
+        ssl: false,
       };
     }
+
+    if (nodeEnv === 'test') {
+      return {
+        ...baseConfig,
+        type: 'sqlite',
+        database: ':memory:',
+        synchronize: true,
+        dropSchema: true,
+      };
+    }
+
+    if (nodeEnv === 'production') {
+      const dbUrl = this.configService.get<string>('DATABASE_URL');
+      if (!dbUrl) {
+        throw new Error(
+          'DATABASE_URL is not defined in production environment',
+        );
+      }
+
+      return {
+        ...baseConfig,
+        type: 'postgres',
+        url: dbUrl,
+        synchronize: false,
+        ssl: { rejectUnauthorized: false },
+      };
+    }
+
+    throw new Error(`Unsupported NODE_ENV: ${nodeEnv}`);
   }
 }
