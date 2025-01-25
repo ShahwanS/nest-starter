@@ -54,11 +54,4 @@ export class UsersService {
   async delete(id: string): Promise<void> {
     await this.usersRepository.delete(id);
   }
-
-  findOne(id: number) {
-    if (!id) {
-      return null;
-    }
-    return this.usersRepository.findOneBy({ id: id.toString() });
-  }
 }
